@@ -99,6 +99,11 @@ module Autoupdate
       #!/bin/sh
       #{set_env}
       /bin/date && #{Autoupdate::Core.brew} #{auto_args}
+
+      # (lb): OMR infusion.
+      /bin/date &&
+        OHMYREPOS_LIB="${OHMYREPOS_LIB:-${GITREPOSPATH:-${MR_HOME:-${HOME}}/.kit/git}/ohmyrepos/lib}" \
+        mr -d / infuse
     EOS
     FileUtils.mkpath(Autoupdate::Core.logs)
     FileUtils.mkpath(Autoupdate::Core.location)
