@@ -47,6 +47,12 @@ module Autoupdate
     env_sudo = ENV.fetch("SUDO_ASKPASS") if ENV["SUDO_ASKPASS"]
     env_path = ENV.fetch("PATH")
 
+    # DepoXy/DXY: Remove monkey patches, including `git` shim.
+    shimless_path = PATH.new(env_path).reject {
+      |path| path.to_s.start_with? HOMEBREW_SHIMS_PATH/"shared"
+    }
+    dxy_path = shimless_path.to_str
+
     # We don't want a background task ramping up the user's CPU to build things
     # from source, especially since it'll be non-obvious why the CPU is
     # suddenly being worked hard.
@@ -78,8 +84,23 @@ module Autoupdate
 
     script_contents = <<~EOS
       #!/bin/sh
+
+      /bin/date && (
+        cd ${MOSREPOSPATH:-${DOPP_KIT:-${HOME}/.kit}/mOS}/homebrew-autoupdate &&
+          git pull -r starter master
+      )
+
       #{set_env}
       /bin/date && #{Autoupdate::Core.brew} #{auto_args}
+      # [DXY] So we can email user if autoupdate failed.
+      # - Though we don't parse the output for the reason.
+      #   - It's likely that brew needs sudo password for
+      #     some package, e.g., VirtualBox.
+      update_status=$?
+
+      # DepoXy/DXY:
+      export PATH='#{dxy_path}'
+      /bin/date && "${DEPOXYAMBERS_DIR:-${HOME}/.depoxy/ambers}/home/.kit/mOS/homebrew-autoupdate/homebrew-autoupdate.sh" '#{Autoupdate::Core.logs}' '#{Autoupdate::Core.name}' "${update_status}"
     EOS
     FileUtils.mkpath(Autoupdate::Core.logs)
     FileUtils.mkpath(Autoupdate::Core.location)
